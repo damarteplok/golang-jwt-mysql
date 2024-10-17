@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/damarteplok/golang-jwt-mysql-test/config"
 	"github.com/damarteplok/golang-jwt-mysql-test/service/auth"
 	"github.com/damarteplok/golang-jwt-mysql-test/types"
 	"github.com/damarteplok/golang-jwt-mysql-test/utils"
@@ -20,17 +21,13 @@ func NewHandler(store types.UserStore) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(router *mux.Router) {
-	router.HandleFunc("/login", h.handleLogin).Methods("POST")
-	router.HandleFunc("/register", h.handleRegister).Methods("POST")
+	router.HandleFunc("/login", h.handleLogin).Methods(http.MethodPost)
+	router.HandleFunc("/register", h.handleRegister).Methods(http.MethodPost)
 }
 
 func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
-
-}
-
-func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 	// get json payload
-	var payload types.RegisterUserPayload
+	var payload types.LoginUserPayload
 	if err := utils.ParseJson(r, &payload); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 	}
@@ -42,7 +39,39 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// check if the user exists
+	u, err := h.store.GetUserByEmail(payload.Email)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("not found, invalid email or password"))
+		return
+	}
+
+	if !auth.ComparePassword(u.Password, []byte(payload.Password)) {
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("not found, invalid email or password"))
+		return
+	}
+
+	secret := []byte(config.Envs.JWTSecret)
+	token, err := auth.CreateJWT(secret, u.ID)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	utils.WriteJSON(w, http.StatusOK, map[string]string{"token": token})
+}
+
+func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
+	var payload types.RegisterUserPayload
+	if err := utils.ParseJson(r, &payload); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+	}
+
+	if err := utils.Validate.Struct(payload); err != nil {
+		errors := err.(validator.ValidationErrors)
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("invalid payload &v", errors))
+		return
+	}
+
 	_, err := h.store.GetUserByEmail(payload.Email)
 	if err == nil {
 		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("user with email %s already exists", payload.Email))
@@ -61,13 +90,10 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 		Email:     payload.Email,
 		Password:  hashedPassword,
 	})
-
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, err)
 		return
 	}
 
 	utils.WriteJSON(w, http.StatusCreated, nil)
-
-	// if it doesnt we create the new user
 }
