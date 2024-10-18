@@ -20,5 +20,4 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 }
 
 func (h *Handler) handleCheckout(w http.ResponseWriter, r *http.Request) {
-
 }

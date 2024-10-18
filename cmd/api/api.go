@@ -5,6 +5,8 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/damarteplok/golang-jwt-mysql-test/service/cart"
+	"github.com/damarteplok/golang-jwt-mysql-test/service/order"
 	"github.com/damarteplok/golang-jwt-mysql-test/service/product"
 	"github.com/damarteplok/golang-jwt-mysql-test/service/user"
 	"github.com/gorilla/mux"
@@ -33,6 +35,10 @@ func (s *APIServer) Run() error {
 	productStore := product.NewStore(s.db)
 	productHandler := product.NewHandler(productStore)
 	productHandler.RegisterRoutes(subrouter)
+
+	orderStore := order.NewStore(s.db)
+	cartHandler := cart.NewHandler(orderStore, productStore, userStore)
+	cartHandler.RegisterRoutes(subrouter)
 
 	log.Println("Listening on", s.addr)
 	return http.ListenAndServe(s.addr, router)

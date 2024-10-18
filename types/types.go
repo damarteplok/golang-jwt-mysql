@@ -2,21 +2,6 @@ package types
 
 import "time"
 
-type UserStore interface {
-	GetUserByEmail(email string) (*User, error)
-	GetUserById(id int) (*User, error)
-	CreateUser(User) error
-}
-
-type ProductStore interface {
-	GetProducts() ([]Product, error)
-}
-
-type OrderStore interface {
-	CreateOrder(Order) (int, error)
-	CreateOrderItem(OrderItem) error
-}
-
 type Order struct {
 	ID        int       `json:"id"`
 	UserID    int       `json:"userID"`
@@ -54,6 +39,28 @@ type User struct {
 	CreatedAt time.Time `json:"createdAt"`
 }
 
+type CartItem struct {
+	ProductID int `json:"productID"`
+	Quantity  int `json:"quantity"`
+}
+
+type UserStore interface {
+	GetUserByEmail(email string) (*User, error)
+	GetUserById(id int) (*User, error)
+	CreateUser(User) error
+}
+
+type ProductStore interface {
+	GetProducts() ([]Product, error)
+	GetProductsByIDs(ps []int) ([]Product, error)
+	UpdateProduct(Product) error
+}
+
+type OrderStore interface {
+	CreateOrder(Order) (int, error)
+	CreateOrderItem(OrderItem) error
+}
+
 type RegisterUserPayload struct {
 	FirstName string `json:"firstName" validate:"required"`
 	LastName  string `json:"lastName" validate:"required"`
@@ -64,4 +71,8 @@ type RegisterUserPayload struct {
 type LoginUserPayload struct {
 	Email    string `json:"email" validate:"required,email"`
 	Password string `json:"password" validate:"required"`
+}
+
+type CartCheckoutPayload struct {
+	Items []CartItem `json:"items" validate:"required"`
 }
